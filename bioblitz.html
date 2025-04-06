@@ -1,0 +1,981 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BioBlitz Practice Tool (JS Only)</title>
+    <style>
+        /* --- Basic Styling (Similar to previous, blue theme) --- */
+        :root {
+            --primary-color: #1e88e5; /* Blue shade */
+            --secondary-color: #e3f2fd; /* Light Blue */
+            --text-color: #333;
+            --bg-color: #ffffff;
+            --border-color: #bbdefb;
+            --success-color: #43a047; /* Green */
+            --error-color: #e53935;   /* Red */
+            --player1-color: #fdd835; /* Yellow */
+            --player2-color: #8e24aa; /* Purple */
+            --solo-color: #00acc1;   /* Cyan */
+            --warning-color: #ffa000; /* Amber */
+            --font-family: 'Roboto', 'Segoe UI', sans-serif;
+        }
+        /* Basic Reset, Body, Container, Header, Nav (similar) */
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: var(--font-family); background-color: #f4f8fb; color: var(--text-color); line-height: 1.6; display: flex; flex-direction: column; min-height: 100vh; font-size: 16px;}
+        .container { width: 95%; max-width: 1000px; margin: 20px auto; background-color: var(--bg-color); padding: 25px 30px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); flex-grow: 1; }
+        header { background-color: var(--primary-color); color: white; padding: 12px 0; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        nav { width: 95%; max-width: 1000px; margin: 0 auto; display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 10px;}
+        .logo { font-size: 1.6em; font-weight: 600; }
+        nav ul { list-style: none; display: flex; flex-wrap: wrap; gap: 5px; padding: 0; margin: 0; }
+        nav ul li a { color: white; text-decoration: none; padding: 8px 12px; border-radius: 4px; transition: background-color 0.2s ease; cursor: pointer; font-weight: 500; display: block; }
+        nav ul li a:hover, nav ul li a.active-nav { background-color: rgba(255, 255, 255, 0.2); }
+
+        /* Section Styling */
+        .content-section { display: none; padding-top: 20px; animation: fadeIn 0.5s ease-in-out; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        .content-section.active { display: block; }
+        h1, h2, h3 { margin-bottom: 20px; color: var(--primary-color); font-weight: 600; }
+        h1 { text-align: center; font-size: 1.8em; margin-bottom: 30px; }
+        h2 { border-bottom: 2px solid var(--secondary-color); padding-bottom: 8px; font-size: 1.4em; margin-top: 30px; }
+        h3 { font-size: 1.2em; color: #444; margin-bottom: 15px; }
+
+        /* Buttons & Inputs */
+        button { background-color: var(--primary-color); color: white; border: none; padding: 10px 18px; border-radius: 4px; cursor: pointer; font-size: 1em; transition: background-color 0.2s ease, transform 0.1s ease; font-weight: 500; margin: 5px; vertical-align: middle;}
+        button:hover:not(:disabled) { background-color: #1565c0; }
+        button:active:not(:disabled) { transform: scale(0.98); }
+        button:disabled { background-color: #bdbdbd; cursor: not-allowed; transform: none; opacity: 0.7; }
+        input[type="text"], input[type="number"], select, textarea { padding: 10px 12px; border: 1px solid var(--border-color); border-radius: 4px; font-size: 1em; margin-bottom: 10px; width: 100%; transition: border-color 0.2s ease, box-shadow 0.2s ease; font-family: inherit; }
+        input:focus, select:focus, textarea:focus { border-color: var(--primary-color); box-shadow: 0 0 0 2px var(--secondary-color); outline: none; }
+        textarea { min-height: 120px; resize: vertical; line-height: 1.5; }
+        label { font-weight: 500; margin-bottom: 5px; display: inline-block; }
+
+        /* --- Main Menu --- */
+        .mode-selection { text-align: center; margin: 30px 0; }
+        .mode-selection button { margin: 10px; padding: 12px 25px; font-size: 1.1em; min-width: 180px;}
+        .mode-selection button.solo-btn { background-color: var(--solo-color); }
+        .mode-selection button.solo-btn:hover:not(:disabled) { background-color: #00838f; }
+        .mode-selection button.multi-btn { background-color: var(--player2-color); }
+        .mode-selection button.multi-btn:hover:not(:disabled) { background-color: #6a1b9a; }
+        .mode-selection button.online-btn { background-color: var(--warning-color); } /* Style for placeholder */
+        .mode-selection button.online-btn:hover:not(:disabled) { background-color: #e65100;}
+
+        /* --- Setup Screens --- */
+        .setup-form { background-color: var(--secondary-color); padding: 20px 25px; border-radius: 8px; margin-bottom: 20px; border: 1px solid var(--border-color); }
+        .form-group { margin-bottom: 20px; }
+        .form-group label { margin-right: 10px; }
+        .form-group input[type="number"], .form-group select { width: auto; min-width: 150px; display: inline-block; vertical-align: middle; margin-bottom: 0;}
+        .form-group input[type="number"] { width: 80px; }
+        .form-actions { text-align: center; margin-top: 20px; padding-top: 15px; border-top: 1px solid var(--border-color);}
+        .form-actions button { min-width: 120px; }
+        #custom-questions-area { margin-top: 15px; }
+        #custom-questions-area label { display: block; margin-bottom: 5px;}
+        #custom-questions-area small { display: block; margin-top: 5px; color: #555; }
+
+        /* --- Game Styles --- */
+        .game-area { }
+        .game-status { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 10px; padding: 12px 18px; border-radius: 6px; font-size: 1.1em; margin-bottom: 25px; font-weight: 500; }
+        #solo-game-status { background-color: #e0f7fa; }
+        #multi-game-status { background-color: #f3e5f5; }
+        #question-display { background-color: #fff; padding: 25px; margin: 25px 0; border-radius: 8px; border: 1px solid var(--border-color); border-left: 6px solid var(--primary-color); font-size: 1.15em; min-height: 100px; display: flex; align-items: center; justify-content: center; text-align: center; line-height: 1.5; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
+        .answer-area { margin-top: 20px; display: flex; flex-direction: column; align-items: center; }
+        .answer-area input[type="text"] { max-width: 450px; margin-bottom: 15px; text-align: center;}
+        .answer-area button { width: 150px; }
+        .feedback { text-align: center; margin-top: 15px; font-weight: bold; min-height: 1.5em; padding: 5px; border-radius: 4px;}
+        .feedback.correct { color: var(--success-color); background-color: #e8f5e9;}
+        .feedback.incorrect { color: var(--error-color); background-color: #ffebee;}
+
+        /* Multiplayer Specific */
+        .players-container { display: flex; gap: 25px; margin-top: 20px; }
+        .player-area { flex: 1; border: 1px solid var(--border-color); padding: 20px; border-radius: 8px; background-color: #fff; box-shadow: 0 1px 2px rgba(0,0,0,0.05); display: flex; flex-direction: column; }
+        .player-area h3 { text-align: center; margin-bottom: 15px; padding-bottom: 10px; border-bottom: 1px solid var(--secondary-color); font-weight: 600; font-size: 1.2em; }
+        .player-score { font-weight: bold; font-size: 1.1em; text-align: center; margin-bottom: 15px; display: block; }
+        .player-area .status { margin-top: auto; padding-top: 10px; font-style: italic; text-align: center; color: #555; font-size: 0.95em; min-height: 2.5em; border-top: 1px solid var(--secondary-color); padding-top: 15px; margin-top: 15px; }
+        #player1-area h3 { color: var(--player1-color); border-left: 5px solid var(--player1-color); padding-left: 10px;}
+        #player2-area h3 { color: var(--player2-color); border-left: 5px solid var(--player2-color); padding-left: 10px;}
+        #multi-results-section .results-summary { text-align: center; font-size: 1.3em; padding: 25px; background-color: #f3e5f5; border-radius: 6px; border: 1px solid #e1bee7; }
+        #multi-results-section .winner { color: var(--success-color); font-weight: bold; font-size: 1.6em; margin-top: 15px; display: block; }
+
+        /* Stats Section */
+        #stats-section { text-align: center; }
+        #stats-display { background-color: var(--secondary-color); padding: 20px 30px; border-radius: 6px; margin-top: 15px; display: inline-block; min-width: 350px; border: 1px solid var(--border-color);}
+        #stats-display p { margin-bottom: 12px; font-size: 1.1em; text-align: left; }
+        #stats-display span { font-weight: bold; color: var(--primary-color); float: right; margin-left: 15px; }
+        #clear-stats-btn { background-color: var(--error-color); margin-top: 20px; }
+        #clear-stats-btn:hover { background-color: #c62828; }
+
+        /* Rules Section */
+        #rules-section p, #rules-section ul { margin-bottom: 15px; }
+        #rules-section ul { padding-left: 30px; }
+        #rules-section .placeholder-note { font-weight: bold; color: var(--warning-color); }
+
+        /* Placeholders */
+        .placeholder { border: 2px dashed var(--warning-color); padding: 15px; margin: 20px 0; text-align: center; background-color: #fffde7; color: #555; }
+        .placeholder button { background-color: #aaa; cursor: not-allowed;}
+
+        /* Footer */
+        footer { text-align: center; padding: 15px; margin-top: 30px; font-size: 0.9em; color: #666; background-color: #e3f2fd; border-top: 1px solid var(--border-color); }
+        /* Responsive */
+        @media (max-width: 768px) {
+            .container { padding: 20px 15px; }
+            nav { flex-direction: column; gap: 10px; }
+            nav ul { justify-content: center; }
+            .players-container { flex-direction: column; }
+            .game-status { flex-direction: column; gap: 5px; align-items: center;}
+            h1 { font-size: 1.6em; }
+            .mode-selection button { min-width: 150px; }
+            .form-group input[type="number"], .form-group select { width: 100%; margin-bottom: 10px;}
+        }
+        @media (max-width: 480px) {
+             nav ul li a { padding: 6px 8px; font-size: 0.9em;}
+             button { font-size: 0.95em; padding: 8px 15px;}
+             .mode-selection button { min-width: 120px; font-size: 1em;}
+             h1 { font-size: 1.5em; }
+             .game-status { font-size: 1em; }
+             #question-display { font-size: 1.1em;}
+             .player-area h3 { font-size: 1.1em;}
+        }
+    </style>
+     <link rel="preconnect" href="https://fonts.googleapis.com">
+     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+     <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+</head>
+<body>
+
+    <header>
+        <nav>
+            <div class="logo">BioBlitz Practice</div>
+            <ul>
+                <li><a href="#home" data-section="main-menu-section" class="active-nav">Home</a></li>
+                <li><a href="#stats" data-section="stats-section">Stats</a></li>
+                <li><a href="#rules" data-section="rules-section">Rules</a></li>
+                <!-- Placeholder for future Online mode Link -->
+                <li><a href="#online" data-section="online-placeholder-section">Online (Demo)</a></li>
+            </ul>
+        </nav>
+    </header>
+
+    <div class="container">
+        <!-- === Main Menu / Mode Selection === -->
+        <section id="main-menu-section" class="content-section active">
+            <h1>Choose Your Practice Mode</h1>
+            <div class="mode-selection">
+                <button id="show-solo-setup-btn" class="solo-btn">Solo Practice</button>
+                <button id="show-multi-setup-btn" class="multi-btn">2-Player (Local)</button>
+                <button id="show-online-placeholder-btn" class="online-btn" title="Requires server backend (Not implemented)">Online Game (Demo)</button>
+            </div>
+            <h2 style="margin-top: 40px;">Note on Questions</h2>
+            <p>The predefined questions are a small, manually curated sample inspired by past USABO exams. They are intended for practice and may not reflect the exact difficulty or format of current official exams. You can also add your own questions in the setup screens.</p>
+        </section>
+
+        <!-- === Solo Practice Setup === -->
+        <section id="solo-setup-section" class="content-section">
+            <h1>Solo Practice Setup</h1>
+            <form class="setup-form" id="solo-setup-form">
+                <div class="form-group">
+                    <label for="solo-num-questions">Number of Questions:</label>
+                    <input type="number" id="solo-num-questions" value="10" min="1" max="20">
+                </div>
+                <div class="form-group">
+                    <label for="solo-topic-select">Question Topic:</label>
+                    <select id="solo-topic-select">
+                        <option value="all">All Topics (Random)</option>
+                        <!-- Topics populated by JS -->
+                    </select>
+                </div>
+                 <div class="form-group" id="solo-custom-questions-area">
+                    <label for="solo-custom-questions-input">Paste Custom Questions (Optional):</label>
+                    <textarea id="solo-custom-questions-input" placeholder="Paste questions here, one per line, in the format: 
+Question Text ||| Answer Text"></textarea>
+                     <small>If you add custom questions, the 'Topic' selection above will be ignored.</small>
+                </div>
+                <div class="form-actions">
+                    <button type="submit" id="start-solo-game-btn">Start Solo Practice</button>
+                    <button type="button" class="back-to-menu-btn">Back to Menu</button>
+                </div>
+            </form>
+        </section>
+
+        <!-- === Multiplayer Setup === -->
+        <section id="multi-setup-section" class="content-section">
+             <h1>Local Multiplayer Setup</h1>
+            <form class="setup-form" id="multi-setup-form">
+                <div class="form-group">
+                    <label for="multi-num-questions">Number of Questions:</label>
+                    <input type="number" id="multi-num-questions" value="5" min="1" max="20">
+                </div>
+                <div class="form-group">
+                    <label for="multi-topic-select">Question Topic:</label>
+                    <select id="multi-topic-select">
+                        <option value="all">All Topics (Random)</option>
+                        <!-- Topics populated by JS -->
+                    </select>
+                </div>
+                 <div class="form-group" id="multi-custom-questions-area">
+                    <label for="multi-custom-questions-input">Paste Custom Questions (Optional):</label>
+                    <textarea id="multi-custom-questions-input" placeholder="Paste questions here, one per line, in the format: 
+Question Text ||| Answer Text"></textarea>
+                     <small>If you add custom questions, the 'Topic' selection above will be ignored.</small>
+                </div>
+                <div class="form-actions">
+                    <button type="submit" id="start-multi-game-btn">Start Local Game</button>
+                    <button type="button" class="back-to-menu-btn">Back to Menu</button>
+                </div>
+            </form>
+        </section>
+
+        <!-- === Solo Practice Game === -->
+        <section id="solo-practice-section" class="content-section game-area">
+            <h1 id="solo-game-title">Solo Practice</h1> <!-- Title can be updated -->
+            <div id="solo-game-status" class="game-status">
+                <span id="solo-q-counter">Question 1 / 10</span>
+                <span id="solo-score">Score: 0</span>
+            </div>
+            <div id="solo-question-display" class="question-display">Loading question...</div>
+            <div class="answer-area">
+                <input type="text" id="solo-answer-input" placeholder="Your answer..." autocomplete="off">
+                <button id="solo-submit-btn">Submit Answer</button>
+            </div>
+            <div id="solo-feedback" class="feedback"></div>
+             <div style="text-align:center; margin-top: 30px;">
+                <button id="solo-next-btn" style="display: none;">Next Question</button>
+                <button id="solo-results-btn" style="display: none;">Finish Session</button>
+                <button id="solo-quit-btn">Quit to Menu</button>
+            </div>
+        </section>
+
+        <!-- === Multiplayer Game === -->
+        <section id="multiplayer-game-section" class="content-section game-area">
+            <h1 id="multi-game-title">Local Multiplayer Challenge!</h1>
+            <div id="multi-game-status" class="game-status">
+                <span id="multi-q-counter">Question 1 / 5</span>
+            </div>
+            <div id="multi-question-display" class="question-display">Loading question...</div>
+
+            <div class="players-container">
+                <!-- Player 1 Area -->
+                <div class="player-area" id="player1-area">
+                    <h3>Player 1</h3>
+                     <span class="player-score" id="player1-score">Score: 0</span>
+                     <input type="text" id="player1-answer" placeholder="Player 1 Answer..." disabled autocomplete="off">
+                     <button id="player1-submit" disabled>Submit P1</button>
+                    <div class="status" id="player1-status">Waiting for question...</div>
+                </div>
+                <!-- Player 2 Area -->
+                <div class="player-area" id="player2-area">
+                    <h3>Player 2</h3>
+                     <span class="player-score" id="player2-score">Score: 0</span>
+                    <input type="text" id="player2-answer" placeholder="Player 2 Answer..." disabled autocomplete="off">
+                    <button id="player2-submit" disabled>Submit P2</button>
+                    <div class="status" id="player2-status">Waiting for question...</div>
+                </div>
+            </div>
+            <div style="text-align:center; margin-top: 20px;">
+                 <button id="multi-quit-btn">Quit Game</button>
+            </div>
+        </section>
+
+        <!-- === Multiplayer Results === -->
+        <section id="multi-results-section" class="content-section">
+            <h1>Local Game Over!</h1>
+            <div class="results-summary">
+                <p>Final Scores:</p>
+                <p id="final-score-p1">Player 1: 0</p>
+                <p id="final-score-p2">Player 2: 0</p>
+                <span class="winner" id="winner-announcement">It's a tie!</span>
+            </div>
+            <div style="text-align: center; margin-top: 25px;">
+                 <button id="play-again-setup-btn">Play Again?</button>
+                 <button class="back-to-menu-btn">Back to Menu</button>
+            </div>
+        </section>
+
+        <!-- === Stats Section === -->
+        <section id="stats-section" class="content-section">
+            <h1>Your Practice Stats (Local)</h1>
+             <p>These stats are saved only in this browser.</p>
+            <div id="stats-display">
+                 <p>Solo Questions Answered: <span id="stats-solo-answered">0</span></p>
+                 <p>Solo Questions Correct: <span id="stats-solo-correct">0</span></p>
+                 <p>Solo Accuracy: <span id="stats-solo-accuracy">N/A</span></p>
+                 <hr style="margin: 15px 0; border-color: var(--border-color);">
+                 <p>Local Multi Games Played: <span id="stats-multi-played">0</span></p>
+                 <p>Local Multi P1 Wins: <span id="stats-multi-p1wins">0</span></p>
+                 <p>Local Multi P2 Wins: <span id="stats-multi-p2wins">0</span></p>
+            </div>
+            <button id="clear-stats-btn">Clear Stats</button>
+        </section>
+
+         <!-- === Rules Section === -->
+        <section id="rules-section" class="content-section">
+             <h1>Rules & Info</h1>
+             <h2>Game Setup</h2>
+             <ul>
+                  <li>Choose Solo Practice or 2-Player Local mode.</li>
+                  <li>Select the number of questions.</li>
+                  <li>Choose a topic to get random questions from the built-in bank.</li>
+                  <li>Alternatively, paste your own questions in the format <code>Question text ||| Answer text</code> (one per line) into the text area. Custom questions override the topic selection.</li>
+             </ul>
+             <h2>Solo Practice</h2>
+             <ul>
+                 <li>Answer the displayed questions. Your performance is tracked locally in Stats.</li>
+             </ul>
+             <h2>Local Multiplayer</h2>
+              <ul>
+                 <li>Two players use the same computer/screen.</li>
+                 <li>The FIRST player to submit the CORRECT answer gets the point.</li>
+                 <li>Answer checking is based on keywords or matching the provided answer text (case-insensitive).</li>
+              </ul>
+              <h2>Online Mode (Placeholder)</h2>
+              <p class="placeholder-note">The 'Online Game' mode is a placeholder. True online multiplayer requires a server backend to connect players, manage games, and store leaderboards. This feature is not implemented in this JS-only version.</p>
+             <h2>Important Note</h2>
+             <p>This is a practice tool using a limited, manually curated set of questions inspired by public USABO materials. It is not affiliated with the official USABO.</p>
+        </section>
+
+        <!-- === Online Placeholder Section === -->
+        <section id="online-placeholder-section" class="content-section">
+             <h1>Online Multiplayer (Placeholder)</h1>
+             <div class="placeholder">
+                 <p>This section demonstrates where online features would go.</p>
+                 <p><strong>Features requiring a server (Not Implemented):</strong></p>
+                 <ul>
+                     <li>Viewing available game servers/lobbies</li>
+                     <li>Joining a game with players on other computers</li>
+                     <li>Real-time synchronization of game state</li>
+                     <li>Global leaderboards</li>
+                 </ul>
+                 <button disabled>Join Random Game</button>
+                 <button disabled>Create Private Game</button>
+                 <h3>Available Servers (Mockup)</h3>
+                 <ul style="list-style:none; padding: 10px; background: #eee; text-align:left; max-width: 300px; margin: 10px auto;">
+                     <li>Server 1: Genetics Fun (2/4 players) <button disabled style="font-size:0.8em; padding: 2px 5px;">Join</button></li>
+                     <li>Server 2: Cell Bio Challenge (3/4 players) <button disabled style="font-size:0.8em; padding: 2px 5px;">Join</button></li>
+                 </ul>
+                 <h3>Leaderboard (Mockup)</h3>
+                 <ol style="list-style:none; padding: 10px; background: #eee; text-align:left; max-width: 300px; margin: 10px auto;">
+                      <li>UserXYZ - 1500 points</li>
+                      <li>BioChamp - 1450 points</li>
+                      <li>Genius123 - 1300 points</li>
+                 </ol>
+                  <button type="button" class="back-to-menu-btn">Back to Menu</button>
+             </div>
+        </section>
+    </div>
+
+    <footer>
+        © 2023 BioBlitz Practice Tool (JS Only Version)
+    </footer>
+
+    <script>
+        // --- Manually Curated Question Bank (From PDF Sample) ---
+        const bioQuestionsBank = [
+    // --- Molecular Biology ---
+    { question: "Q1: Which enzyme is responsible for removing RNA primers during eukaryotic DNA replication? (Options: DNA polymerase I, DNA polymerase III, RNase H, Ligase, Helicase)", answer: "c", topic: "Molecular Biology" },
+    { question: "Q2: Which of the following elements is essential for the catalytic activity of DNA polymerases? (Options: Iron, Copper, Zinc, Magnesium, Manganese)", answer: "d", topic: "Molecular Biology" },
+    { question: "Q3: Which structure is the site of ribosomal RNA transcription in eukaryotes? (Options: Nucleolus, Nucleus, Cytoplasm, Endoplasmic reticulum, Golgi apparatus)", answer: "a", topic: "Molecular Biology" },
+    { question: "Q4: In prokaryotic gene expression, what function does the sigma factor serve? (Options: Terminates transcription, Guides RNA polymerase to promoter, Acts as a ribosomal subunit, Catalyzes peptide bond formation, Splices introns)", answer: "b", topic: "Molecular Biology" },
+    { question: "Q5: Which process in eukaryotic cells adds a 5' cap to mRNA? (Options: Polyadenylation, Splicing, Transcription elongation, Co-transcriptional modification, Translation)", answer: "d", topic: "Molecular Biology" },
+
+    // --- Biochemistry ---
+    { question: "Q6: Which amino acid is most likely to be phosphorylated by kinases in signal transduction pathways? (Options: Serine, Alanine, Glycine, Valine, Phenylalanine)", answer: "a", topic: "Biochemistry" },
+    { question: "Q7: Which coenzyme is involved in redox reactions in the citric acid cycle? (Options: Coenzyme A, NAD+, FADH2, Biotin, TPP)", answer: "b", topic: "Biochemistry" },
+    { question: "Q8: Which protein structure level involves hydrogen bonding between backbone atoms? (Options: Primary, Secondary, Tertiary, Quaternary, Pentameric)", answer: "b", topic: "Biochemistry" },
+    { question: "Q9: What is the role of cholesterol in a phospholipid bilayer? (Options: Increase rigidity, Decrease membrane proteins, Inhibit diffusion, Facilitate transcription, Denature proteins)", answer: "a", topic: "Biochemistry" },
+    { question: "Q10: What molecule acts as the primary pH buffer in human blood? (Options: Phosphate, Ammonia, Bicarbonate, Carbonate, Lactate)", answer: "c", topic: "Biochemistry" },
+
+    // --- Cell Biology ---
+    { question: "Q11: Which organelle is directly responsible for sorting proteins to the lysosome? (Options: Smooth ER, Rough ER, Golgi apparatus, Mitochondria, Peroxisomes)", answer: "c", topic: "Cell Biology" },
+    { question: "Q12: What is the major function of microtubules during mitosis? (Options: Transcription, DNA replication, Membrane fusion, Chromosome segregation, Cytokinesis)", answer: "d", topic: "Cell Biology" },
+    { question: "Q13: Which phase of the cell cycle is characterized by DNA replication? (Options: G1, G2, M, S, G0)", answer: "d", topic: "Cell Biology" },
+    { question: "Q14: Which junction prevents paracellular transport in epithelial cells? (Options: Gap junction, Desmosome, Tight junction, Adherens junction, Synapse)", answer: "c", topic: "Cell Biology" },
+    { question: "Q15: Which membrane component contributes most to cell-cell recognition? (Options: Cholesterol, Phospholipids, Glycoproteins, Integral proteins, Actin)", answer: "c", topic: "Cell Biology" },
+
+    // --- Genetics ---
+    { question: "Q16: A heterozygous phenotype appears normal despite one defective allele. What is this an example of? (Options: Codominance, Incomplete dominance, Epistasis, Haplosufficiency, Penetrance)", answer: "d", topic: "Genetics" },
+    { question: "Q17: What genetic principle is demonstrated by genes located close together on the same chromosome? (Options: Linkage, Recombination, Assortment, Translocation, Codominance)", answer: "a", topic: "Genetics" },
+    { question: "Q18: Which technique is used to amplify a DNA segment? (Options: Gel electrophoresis, PCR, Western blotting, ELISA, Microarray)", answer: "b", topic: "Genetics" },
+    { question: "Q19: What type of mutation results in a premature stop codon? (Options: Missense, Silent, Nonsense, Frameshift, Duplication)", answer: "c", topic: "Genetics" },
+    { question: "Q20: Which type of inheritance shows a 2:1 phenotypic ratio due to embryonic lethality in one genotype? (Options: Incomplete dominance, Dominant lethal, Recessive lethal, Codominance, Epistasis)", answer: "c", topic: "Genetics" },
+
+    // --- Physiology ---
+    { question: "Q21: Which hormone increases water reabsorption in the kidneys by increasing aquaporins? (Options: Aldosterone, Cortisol, ADH, ANP, Angiotensin II)", answer: "c", topic: "Physiology" },
+    { question: "Q22: Which part of the nephron is primarily responsible for filtration? (Options: Loop of Henle, Distal tubule, Proximal tubule, Glomerulus, Collecting duct)", answer: "d", topic: "Physiology" },
+    { question: "Q23: In cardiac physiology, which ion influx is primarily responsible for the plateau phase? (Options: Na+, K+, Ca2+, Cl-, H+)", answer: "c", topic: "Physiology" },
+    { question: "Q24: What is the main site of nutrient absorption in the digestive system? (Options: Stomach, Duodenum, Ileum, Colon, Esophagus)", answer: "b", topic: "Physiology" },
+    { question: "Q25: Which part of the brain regulates circadian rhythms? (Options: Hippocampus, Thalamus, Suprachiasmatic nucleus, Cerebellum, Amygdala)", answer: "c", topic: "Physiology" },
+
+    // --- Developmental Biology ---
+    { question: "Q26: Which embryonic structure gives rise to the central nervous system? (Options: Notochord, Neural crest, Neural tube, Somites, Mesoderm)", answer: "c", topic: "Developmental Biology" },
+    { question: "Q27: What is the term for the formation of the three germ layers? (Options: Gastrulation, Neurulation, Blastulation, Cleavage, Implantation)", answer: "a", topic: "Developmental Biology" },
+    { question: "Q28: The notochord arises from which germ layer? (Options: Endoderm, Ectoderm, Mesoderm, Neural crest, Epiblast)", answer: "c", topic: "Developmental Biology" },
+    { question: "Q29: Which molecule gradient is crucial for anterior-posterior axis formation? (Options: BMP, Wnt, Sonic hedgehog, FGF, Retinoic acid)", answer: "e", topic: "Developmental Biology" },
+    { question: "Q30: Hox genes are responsible for what developmental feature? (Options: Cell adhesion, Apoptosis, Segment identity, Neural migration, Morphogen secretion)", answer: "c", topic: "Developmental Biology" },
+
+    // --- Evolution ---
+    { question: "Q31: What process best explains fixation of neutral alleles in small populations? (Options: Gene flow, Natural selection, Genetic drift, Mutation, Nonrandom mating)", answer: "c", topic: "Evolution" },
+    { question: "Q32: Which model proposes that evolution occurs in rapid bursts followed by stasis? (Options: Gradualism, Catastrophism, Punctuated equilibrium, Neutral theory, Lamarckism)", answer: "c", topic: "Evolution" },
+    { question: "Q33: Homologous structures are evidence of what? (Options: Convergent evolution, Adaptive radiation, Common ancestry, Genetic drift, Parallel evolution)", answer: "c", topic: "Evolution" },
+    { question: "Q34: What is the unit of selection in natural selection theory? (Options: DNA, Chromosome, Individual, Population, Species)", answer: "c", topic: "Evolution" },
+    { question: "Q35: What is required for Hardy-Weinberg equilibrium? (Options: Natural selection, Genetic drift, No mutations, Nonrandom mating, Migration)", answer: "c", topic: "Evolution" },
+
+    // --- Biotechnology ---
+    { question: "Q36: What is the primary function of CRISPR-Cas9 in gene editing? (Options: DNA methylation, Gene silencing, Targeted double-strand breaks, RNA interference, Enhancer binding)", answer: "c", topic: "Biotechnology" },
+    { question: "Q37: Which blotting technique detects RNA? (Options: Western, Northern, Southern, Southwestern, Eastern)", answer: "b", topic: "Biotechnology" },
+    { question: "Q38: Which component is used to insert foreign DNA into bacteria? (Options: Plasmid, Cosmid, BAC, Transposon, YAC)", answer: "a", topic: "Biotechnology" },
+    { question: "Q39: What enzyme is used in PCR to withstand high temperatures? (Options: Taq polymerase, DNA ligase, RNA polymerase, Reverse transcriptase, Topoisomerase)", answer: "a", topic: "Biotechnology" },
+    { question: "Q40: In DNA electrophoresis, which direction do DNA fragments move? (Options: Positive to negative, Negative to positive, Toward neutral, Circular, Random)", answer: "b", topic: "Biotechnology" },
+
+    // --- Plant Biology ---
+    { question: "Q41: Which hormone promotes cell elongation and phototropism? (Options: Cytokinin, Auxin, Gibberellin, Abscisic acid, Ethylene)", answer: "b", topic: "Plant Biology" },
+    { question: "Q42: Which structure regulates gas exchange in plants? (Options: Stomata, Trichomes, Phloem, Xylem, Cuticle)", answer: "a", topic: "Plant Biology" },
+    { question: "Q43: Which process primarily drives the upward movement of water in xylem? (Options: Root pressure, Capillary action, Cohesion-tension, Osmosis, Active transport)", answer: "c", topic: "Plant Biology" },
+    { question: "Q44: What pigment absorbs red and blue light for photosynthesis? (Options: Carotene, Xanthophyll, Chlorophyll a, Chlorophyll b, Phytochrome)", answer: "c", topic: "Plant Biology" },
+    { question: "Q45: What tissue is responsible for transporting sugars in plants? (Options: Xylem, Cambium, Phloem, Parenchyma, Sclerenchyma)", answer: "c", topic: "Plant Biology" },
+
+    // --- Ecology ---
+    { question: "Q46: Which concept explains the role of a species that disproportionately affects community structure? (Options: Keystone species, Dominant species, Foundation species, Mutualist, Apex predator)", answer: "a", topic: "Ecology" },
+    { question: "Q47: What ecological term describes the number of different species in a community? (Options: Abundance, Evenness, Richness, Biomass, Density)", answer: "c", topic: "Ecology" },
+    { question: "Q48: What term describes the transition from bare rock to a stable forest ecosystem? (Options: Climax succession, Secondary succession, Primary succession, Trophic cascade, Biome shift)", answer: "c", topic: "Ecology" },
+    { question: "Q49: What is the most efficient energy transfer between trophic levels? (Options: 1%, 10%, 20%, 50%, 90%)", answer: "b", topic: "Ecology" },
+    { question: "Q50: What type of survivorship curve do humans exhibit? (Options: Type I, Type II, Type III, Exponential, Logistic)", answer: "a", topic: "Ecology" }
+    ];
+
+        const MAX_QUESTIONS_AVAILABLE = bioQuestionsBank.length; // Update based on actual count
+
+        // --- State Variables ---
+        let currentMode = 'main-menu-section';
+        let soloState = { active: false, questions: [], currentIndex: 0, score: 0 };
+        let multiState = { active: false, questions: [], totalQuestions: 5, currentIndex: -1, scores: { player1: 0, player2: 0 }, currentCorrectAnswer: "", questionAnswered: false, fastestPlayer: null };
+        let localStats = { soloAnswered: 0, soloCorrect: 0, multiPlayed: 0, multiP1Wins: 0, multiP2Wins: 0 };
+
+        // --- DOM Elements (Grouped) ---
+        // General & Navigation
+        const sections = document.querySelectorAll('.content-section');
+        const navLinks = document.querySelectorAll('nav ul li a');
+        const backToMenuBtns = document.querySelectorAll('.back-to-menu-btn'); // Common class for back buttons
+
+        // Main Menu
+        const showSoloSetupBtn = document.getElementById('show-solo-setup-btn');
+        const showMultiSetupBtn = document.getElementById('show-multi-setup-btn');
+        const showOnlinePlaceholderBtn = document.getElementById('show-online-placeholder-btn');
+
+        // Solo Setup
+        const soloSetupForm = document.getElementById('solo-setup-form');
+        const soloNumQuestionsInput = document.getElementById('solo-num-questions');
+        const soloTopicSelect = document.getElementById('solo-topic-select');
+        const soloCustomInput = document.getElementById('solo-custom-questions-input');
+
+        // Multi Setup
+        const multiSetupForm = document.getElementById('multi-setup-form');
+        const multiNumQuestionsInput = document.getElementById('multi-num-questions');
+        const multiTopicSelect = document.getElementById('multi-topic-select');
+        const multiCustomInput = document.getElementById('multi-custom-questions-input');
+
+        // Solo Game
+        const soloGameSection = document.getElementById('solo-practice-section');
+        const soloGameTitle = document.getElementById('solo-game-title');
+        const soloQCounter = document.getElementById('solo-q-counter');
+        const soloScoreDisplay = document.getElementById('solo-score');
+        const soloQuestionDisplay = document.getElementById('solo-question-display');
+        const soloAnswerInput = document.getElementById('solo-answer-input');
+        const soloSubmitBtn = document.getElementById('solo-submit-btn');
+        const soloFeedback = document.getElementById('solo-feedback');
+        const soloNextBtn = document.getElementById('solo-next-btn');
+        const soloResultsBtn = document.getElementById('solo-results-btn');
+        const soloQuitBtn = document.getElementById('solo-quit-btn');
+
+        // Multi Game
+        const multiGameSection = document.getElementById('multiplayer-game-section');
+        const multiGameTitle = document.getElementById('multi-game-title');
+        const multiQCounter = document.getElementById('multi-q-counter');
+        const multiQuestionDisplay = document.getElementById('multi-question-display');
+        const player1ScoreDisplay = document.getElementById('player1-score');
+        const player1AnswerInput = document.getElementById('player1-answer');
+        const player1SubmitBtn = document.getElementById('player1-submit');
+        const player1Status = document.getElementById('player1-status');
+        const player2ScoreDisplay = document.getElementById('player2-score');
+        const player2AnswerInput = document.getElementById('player2-answer');
+        const player2SubmitBtn = document.getElementById('player2-submit');
+        const player2Status = document.getElementById('player2-status');
+        const multiQuitBtn = document.getElementById('multi-quit-btn');
+
+        // Multi Results
+        const multiResultsSection = document.getElementById('multi-results-section');
+        const finalScoreP1 = document.getElementById('final-score-p1');
+        const finalScoreP2 = document.getElementById('final-score-p2');
+        const winnerAnnouncement = document.getElementById('winner-announcement');
+        const playAgainSetupBtn = document.getElementById('play-again-setup-btn');
+
+        // Stats
+        const statsSection = document.getElementById('stats-section');
+        const statsSoloAnswered = document.getElementById('stats-solo-answered');
+        const statsSoloCorrect = document.getElementById('stats-solo-correct');
+        const statsSoloAccuracy = document.getElementById('stats-solo-accuracy');
+        const statsMultiPlayed = document.getElementById('stats-multi-played');
+        const statsMultiP1Wins = document.getElementById('stats-multi-p1wins');
+        const statsMultiP2Wins = document.getElementById('stats-multi-p2wins');
+        const clearStatsBtn = document.getElementById('clear-stats-btn');
+
+        // --- Utility Functions ---
+        function showSection(sectionId) { /* ... (same as previous) ... */
+            currentMode = sectionId;
+            let activeLink = null;
+            sections.forEach(section => section.classList.remove('active'));
+            navLinks.forEach(link => {
+                 link.classList.remove('active-nav');
+                 const linkTarget = link.getAttribute('data-section');
+                 if(linkTarget === sectionId ||
+                   (sectionId === 'main-menu-section' && link.getAttribute('href') === '#home') ||
+                   (sectionId.startsWith('solo') && linkTarget === 'main-menu-section') || // Keep Home active during solo? Maybe not.
+                   (sectionId.startsWith('multi') && linkTarget === 'main-menu-section') // Keep Home active during multi? Maybe not.
+                   ) {
+                     // Let's only highlight exact matches or #home for main menu
+                      if(linkTarget === sectionId || (sectionId === 'main-menu-section' && link.getAttribute('href') === '#home')) {
+                          activeLink = link;
+                      }
+                 }
+                  // Highlight placeholder nav item if showing placeholder section
+                 if (sectionId === 'online-placeholder-section' && linkTarget === 'online-placeholder-section') {
+                     activeLink = link;
+                 }
+
+            });
+
+            const elementToShow = document.getElementById(sectionId);
+            if (elementToShow) {
+                elementToShow.classList.add('active');
+                if(activeLink) activeLink.classList.add('active-nav');
+                window.scrollTo(0, 0); // Scroll to top on section change
+                 // Auto-focus relevant input
+                 if(sectionId === 'solo-practice-section' && !soloAnswerInput.disabled) soloAnswerInput.focus();
+                 if(sectionId === 'multiplayer-game-section' && !player1AnswerInput.disabled) player1AnswerInput.focus();
+                 if(sectionId === 'solo-setup-section') soloNumQuestionsInput.focus();
+                 if(sectionId === 'multi-setup-section') multiNumQuestionsInput.focus();
+
+            } else {
+                console.error("Section not found:", sectionId);
+                showSection('main-menu-section'); // Fallback
+            }
+        }
+
+        function shuffleArray(array) { /* ... (same as previous) ... */
+            let currentIndex = array.length, randomIndex;
+            while (currentIndex !== 0) {
+                randomIndex = Math.floor(Math.random() * currentIndex);
+                currentIndex--;
+                [array[currentIndex], array[randomIndex]] = [array[randomIndex], array[currentIndex]];
+            }
+            return array;
+        }
+
+        function checkAnswerSimple(submitted, correct) { /* ... (same as previous) ... */
+             if (!submitted || !correct) return false;
+            const sub = submitted.toLowerCase().trim();
+            const cor = correct.toLowerCase().trim();
+            if (sub === cor) return true;
+            // Handle simple plurals more generally
+            if ((sub + 's' === cor || sub + 'es' === cor || cor + 's' === sub || cor + 'es' === sub) && Math.abs(sub.length - cor.length) <= 2) return true;
+            // Handle specific letter answers for MCQ style like Q1, Q2, Q3, Q4, Q5, Q6
+            if (cor.length === 1 && sub.length === 1 && sub === cor) return true;
+            // Keyword check (be careful) - only if correct answer is longer
+             if (cor.length > 3 && sub.includes(cor)) return true;
+             if (sub.length > 3 && cor.includes(sub)) return true; // Check if correct is substring of submitted
+
+            return false;
+         }
+
+        function populateTopicDropdowns() {
+            const topics = [...new Set(bioQuestionsBank.map(q => q.topic || 'Uncategorized'))].sort();
+            const optionsHtml = ['<option value="all">All Topics (Random)</option>', ...topics.map(topic => `<option value="${topic}">${topic}</option>`)].join('');
+            soloTopicSelect.innerHTML = optionsHtml;
+            multiTopicSelect.innerHTML = optionsHtml;
+        }
+
+         function parseCustomQuestions(text) {
+             if (!text || text.trim() === '') return [];
+             const lines = text.trim().split('\n');
+             const questions = [];
+             lines.forEach(line => {
+                 const parts = line.split('|||'); // Use '|||' as separator
+                 if (parts.length === 2) {
+                     const questionText = parts[0].trim();
+                     const answerText = parts[1].trim();
+                     if (questionText && answerText) {
+                         questions.push({
+                             question: questionText,
+                             answer: answerText, // Keep original case for display if needed, lowercase for check
+                             topic: "Custom"
+                         });
+                     }
+                 }
+             });
+             return questions;
+         }
+
+        // --- Stats Management ---
+        function loadStats() { /* ... (same as previous) ... */
+             const storedStats = localStorage.getItem('bioBlitzLocalStats');
+            if (storedStats) {
+                localStats = JSON.parse(storedStats);
+                 localStats.soloAnswered = Number(localStats.soloAnswered) || 0;
+                 localStats.soloCorrect = Number(localStats.soloCorrect) || 0;
+                 localStats.multiPlayed = Number(localStats.multiPlayed) || 0;
+                 localStats.multiP1Wins = Number(localStats.multiP1Wins) || 0;
+                 localStats.multiP2Wins = Number(localStats.multiP2Wins) || 0;
+            } else {
+                 localStats = { soloAnswered: 0, soloCorrect: 0, multiPlayed: 0, multiP1Wins: 0, multiP2Wins: 0 };
+            }
+        }
+        function saveStats() { /* ... (same as previous) ... */
+             localStorage.setItem('bioBlitzLocalStats', JSON.stringify(localStats));
+        }
+        function displayStats() { /* ... (same as previous) ... */
+             statsSoloAnswered.textContent = localStats.soloAnswered;
+             statsSoloCorrect.textContent = localStats.soloCorrect;
+             const accuracy = localStats.soloAnswered > 0 ?
+                              ((localStats.soloCorrect / localStats.soloAnswered) * 100).toFixed(1) + '%' :
+                              'N/A';
+             statsSoloAccuracy.textContent = accuracy;
+             statsMultiPlayed.textContent = localStats.multiPlayed;
+             statsMultiP1Wins.textContent = localStats.multiP1Wins;
+             statsMultiP2Wins.textContent = localStats.multiP2Wins;
+        }
+        function clearStats() { /* ... (same as previous) ... */
+             if (confirm("Are you sure you want to clear all locally stored practice stats?")) {
+                localStats = { soloAnswered: 0, soloCorrect: 0, multiPlayed: 0, multiP1Wins: 0, multiP2Wins: 0 };
+                saveStats();
+                displayStats();
+            }
+        }
+
+
+        // --- Game Initialization ---
+         function getQuestionsForGame(numRequested, topic, customInput) {
+            const customQuestions = parseCustomQuestions(customInput);
+            let questionPool = [];
+            let usingCustom = false;
+
+            if (customQuestions.length > 0) {
+                 questionPool = customQuestions;
+                 usingCustom = true;
+                 console.log(`Using ${customQuestions.length} custom questions.`);
+             } else if (topic === 'all') {
+                 questionPool = [...bioQuestionsBank]; // Use all predefined
+                 console.log(`Using all ${questionPool.length} predefined questions.`);
+             } else {
+                 questionPool = bioQuestionsBank.filter(q => q.topic === topic);
+                 console.log(`Using ${questionPool.length} questions from topic: ${topic}`);
+             }
+
+             if (questionPool.length === 0) {
+                 alert("No questions available for the selected criteria!");
+                 return { questions: [], titleSuffix: "" };
+             }
+
+            shuffleArray(questionPool);
+            const finalNum = Math.min(numRequested, questionPool.length);
+            const selectedQuestions = questionPool.slice(0, finalNum);
+
+             let titleSuffix = usingCustom ? "(Custom Set)" : `(${topic === 'all' ? 'All Topics' : topic})`;
+
+            return { questions: selectedQuestions, titleSuffix: titleSuffix };
+         }
+
+        // --- Solo Practice Logic ---
+        function startSoloGame(event) {
+            event.preventDefault(); // Prevent form submission
+            const numQs = parseInt(soloNumQuestionsInput.value) || 10;
+            const topic = soloTopicSelect.value;
+            const customText = soloCustomInput.value;
+
+             const { questions, titleSuffix } = getQuestionsForGame(numQs, topic, customText);
+             if (questions.length === 0) return; // Abort if no questions
+
+            soloState.active = true;
+            soloState.questions = questions;
+            soloState.currentIndex = 0;
+            soloState.score = 0;
+
+            soloGameTitle.textContent = `Solo Practice ${titleSuffix}`;
+            loadSoloQuestion();
+            showSection('solo-practice-section');
+        }
+
+        function loadSoloQuestion() { /* ... (mostly same as previous) ... */
+             if (!soloState.active || soloState.currentIndex >= soloState.questions.length) {
+                finishSoloSession();
+                return;
+            }
+            const questionData = soloState.questions[soloState.currentIndex];
+            soloQuestionDisplay.textContent = questionData.question;
+            soloAnswerInput.value = '';
+            soloAnswerInput.disabled = false;
+            soloSubmitBtn.disabled = false;
+            soloFeedback.textContent = '';
+            soloFeedback.className = 'feedback';
+            soloNextBtn.style.display = 'none';
+            soloResultsBtn.style.display = 'none';
+            soloQuitBtn.style.display = 'inline-block';
+            soloQCounter.textContent = `Question ${soloState.currentIndex + 1} / ${soloState.questions.length}`;
+            soloScoreDisplay.textContent = `Score: ${soloState.score}`;
+            soloAnswerInput.focus();
+        }
+
+        function handleSoloSubmit() { /* ... (mostly same as previous, uses localStats) ... */
+             if (!soloState.active) return;
+            const submittedAnswer = soloAnswerInput.value;
+            const correctAnswer = soloState.questions[soloState.currentIndex].answer;
+
+            soloAnswerInput.disabled = true;
+            soloSubmitBtn.disabled = true;
+            soloQuitBtn.style.display = 'none';
+
+            localStats.soloAnswered++;
+            let isCorrect = checkAnswerSimple(submittedAnswer, correctAnswer);
+
+            if (isCorrect) {
+                soloState.score++;
+                localStats.soloCorrect++;
+                soloFeedback.textContent = "Correct!";
+                soloFeedback.className = 'feedback correct';
+            } else {
+                soloFeedback.textContent = `Incorrect. Correct Answer: ${correctAnswer}`;
+                soloFeedback.className = 'feedback incorrect';
+            }
+            saveStats();
+            soloScoreDisplay.textContent = `Score: ${soloState.score}`;
+            if (soloState.currentIndex < soloState.questions.length - 1) {
+                soloNextBtn.style.display = 'inline-block';
+                soloNextBtn.focus();
+            } else {
+                soloResultsBtn.style.display = 'inline-block';
+                soloResultsBtn.focus();
+            }
+         }
+
+        function nextSoloQuestion() { /* ... (same as previous) ... */
+             soloState.currentIndex++;
+            loadSoloQuestion();
+        }
+        function finishSoloSession() { /* ... (same as previous) ... */
+              soloState.active = false;
+             alert(`Solo session finished!\nYour score: ${soloState.score} / ${soloState.questions.length}`);
+             showSection('main-menu-section');
+        }
+         function quitSoloSession() {
+             if (confirm("Quit current solo session? Stats for answered questions are saved, but session score is lost.")) {
+                 soloState.active = false;
+                 showSection('main-menu-section');
+             }
+         }
+
+
+        // --- Multiplayer Logic ---
+         function startMultiGame(event) {
+             event.preventDefault();
+             const numQs = parseInt(multiNumQuestionsInput.value) || 5;
+             const topic = multiTopicSelect.value;
+             const customText = multiCustomInput.value;
+
+             const { questions, titleSuffix } = getQuestionsForGame(numQs, topic, customText);
+             if (questions.length === 0) return; // Abort
+
+             multiState.active = true;
+             multiState.questions = questions;
+             multiState.totalQuestions = questions.length; // Use actual number selected
+             multiState.currentIndex = -1;
+             multiState.scores = { player1: 0, player2: 0 };
+             multiState.questionAnswered = false;
+             multiState.fastestPlayer = null;
+
+             multiGameTitle.textContent = `Local Multiplayer ${titleSuffix}`;
+             updateMultiScoreDisplays();
+             showSection('multiplayer-game-section');
+             loadMultiQuestion();
+         }
+
+         function loadMultiQuestion() { /* ... (mostly same as previous) ... */
+              multiState.currentIndex++;
+             multiState.questionAnswered = false;
+             multiState.fastestPlayer = null;
+
+             multiQuestionDisplay.textContent = "Loading question...";
+             multiQuestionDisplay.style.borderColor = 'var(--border-color)';
+             multiQuestionDisplay.style.borderLeftColor = 'var(--primary-color)';
+             player1AnswerInput.value = '';
+             player2AnswerInput.value = '';
+             player1AnswerInput.disabled = true;
+             player2AnswerInput.disabled = true;
+             player1SubmitBtn.disabled = true;
+             player2SubmitBtn.disabled = true;
+             player1Status.textContent = "Waiting for question...";
+             player2Status.textContent = "Waiting for question...";
+             player1Status.style.color = '#555';
+             player2Status.style.color = '#555';
+             multiQuitBtn.disabled = false;
+
+             if (multiState.currentIndex >= multiState.totalQuestions) {
+                 endMultiGame();
+                 return;
+             }
+             multiQCounter.textContent = `Question ${multiState.currentIndex + 1} / ${multiState.totalQuestions}`;
+             const questionData = multiState.questions[multiState.currentIndex];
+             multiState.currentCorrectAnswer = questionData.answer.toLowerCase().trim();
+             setTimeout(() => displayMultiQuestion(questionData.question), 400);
+         }
+
+         function displayMultiQuestion(questionText) { /* ... (same as previous) ... */
+              multiQuestionDisplay.textContent = questionText;
+             player1AnswerInput.disabled = false;
+             player2AnswerInput.disabled = false;
+             player1SubmitBtn.disabled = false;
+             player2SubmitBtn.disabled = false;
+             player1Status.textContent = "Question active!";
+             player2Status.textContent = "Question active!";
+             player1AnswerInput.focus();
+         }
+
+        function handleMultiSubmit(playerId) { /* ... (mostly same as previous) ... */
+             if (multiState.questionAnswered || !multiState.active) return;
+             multiState.questionAnswered = true;
+             multiState.fastestPlayer = playerId;
+             multiQuitBtn.disabled = true;
+
+             const playerInput = (playerId === 'player1') ? player1AnswerInput : player2AnswerInput;
+             const opponentInput = (playerId === 'player1') ? player2AnswerInput : player1AnswerInput;
+             const playerStatus = (playerId === 'player1') ? player1Status : player2Status;
+             const opponentStatus = (playerId === 'player1') ? player2Status : player1Status;
+             const playerSubmitBtn = (playerId === 'player1') ? player1SubmitBtn : player2SubmitBtn;
+             const opponentSubmitBtn = (playerId === 'player1') ? player2SubmitBtn : player1SubmitBtn;
+
+             playerInput.disabled = true;
+             opponentInput.disabled = true;
+             playerSubmitBtn.disabled = true;
+             opponentSubmitBtn.disabled = true;
+
+             playerStatus.textContent = `Answer submitted!`;
+             opponentStatus.textContent = `Player ${playerId === 'player1' ? 1 : 2} answered first!`;
+
+             const submittedAnswer = playerInput.value;
+             const correctAnswer = multiState.currentCorrectAnswer;
+             let isCorrect = checkAnswerSimple(submittedAnswer, correctAnswer);
+
+             if (isCorrect) {
+                 multiState.scores[playerId]++;
+                 updateMultiScoreDisplays();
+                 playerStatus.textContent = `Correct! Point awarded!`;
+                 playerStatus.style.color = 'var(--success-color)';
+                 multiQuestionDisplay.style.borderColor = 'var(--success-color)';
+                 multiQuestionDisplay.style.borderLeftColor = 'var(--success-color)';
+             } else {
+                 playerStatus.textContent = `Incorrect.`;
+                 playerStatus.style.color = 'var(--error-color)';
+                 multiQuestionDisplay.style.borderColor = 'var(--error-color)';
+                 multiQuestionDisplay.style.borderLeftColor = 'var(--error-color)';
+                  // Reveal answer after a moment if incorrect
+                 setTimeout(() => {
+                    playerStatus.textContent = `Incorrect. Answer: ${correctAnswer}`;
+                 }, 1000);
+             }
+             setTimeout(loadMultiQuestion, 2500);
+        }
+
+        function updateMultiScoreDisplays() { /* ... (same as previous) ... */
+              player1ScoreDisplay.textContent = `Score: ${multiState.scores.player1}`;
+             player2ScoreDisplay.textContent = `Score: ${multiState.scores.player2}`;
+        }
+
+        function endMultiGame() { /* ... (same as previous, uses localStats) ... */
+             if (!multiState.active) return;
+            multiState.active = false;
+            localStats.multiPlayed++;
+            finalScoreP1.textContent = `Player 1: ${multiState.scores.player1}`;
+            finalScoreP2.textContent = `Player 2: ${multiState.scores.player2}`;
+            if (multiState.scores.player1 > multiState.scores.player2) {
+                winnerAnnouncement.textContent = "Player 1 Wins!";
+                localStats.multiP1Wins++;
+            } else if (multiState.scores.player2 > multiState.scores.player1) {
+                winnerAnnouncement.textContent = "Player 2 Wins!";
+                 localStats.multiP2Wins++;
+            } else {
+                winnerAnnouncement.textContent = "It's a tie!";
+            }
+            saveStats();
+            showSection('multi-results-section');
+        }
+         function quitMultiGame() {
+             if(confirm("Quit current game? Game progress and stats for this match will be lost.")) {
+                  multiState.active = false;
+                  showSection('main-menu-section');
+             }
+         }
+
+
+        // --- Event Listeners ---
+        document.addEventListener('DOMContentLoaded', () => {
+            loadStats(); // Load stats on startup
+            populateTopicDropdowns(); // Populate topic selects
+             // Set max question input values based on bank size initially
+            soloNumQuestionsInput.max = MAX_QUESTIONS_AVAILABLE;
+            multiNumQuestionsInput.max = MAX_QUESTIONS_AVAILABLE;
+            showSection('main-menu-section'); // Start at main menu
+
+            // Navigation
+            navLinks.forEach(link => {
+                link.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    const sectionId = link.getAttribute('data-section');
+                    if (sectionId) {
+                         if (sectionId === 'stats-section') displayStats();
+                         // Add confirmation if trying to navigate away from active game?
+                         if ((soloState.active || multiState.active) && !['solo-practice-section', 'multiplayer-game-section'].includes(sectionId)) {
+                             if (!confirm("Leave current game? Progress may be lost.")) return;
+                             // If confirm, explicitly end current game if active
+                             if (soloState.active) soloState.active = false; // Just mark inactive
+                             if (multiState.active) multiState.active = false; // Just mark inactive
+                         }
+                        showSection(sectionId);
+                    }
+                });
+            });
+
+            // Main Menu Mode Buttons
+            showSoloSetupBtn.addEventListener('click', () => showSection('solo-setup-section'));
+            showMultiSetupBtn.addEventListener('click', () => showSection('multi-setup-section'));
+            showOnlinePlaceholderBtn.addEventListener('click', () => showSection('online-placeholder-section'));
+
+            // Setup Form Submissions (trigger game starts)
+            soloSetupForm.addEventListener('submit', startSoloGame);
+            multiSetupForm.addEventListener('submit', startMultiGame);
+
+            // Back to Menu Buttons
+             backToMenuBtns.forEach(btn => btn.addEventListener('click', () => {
+                 // Add confirmation if leaving an active game section? (Might be redundant with nav check)
+                 showSection('main-menu-section')
+            }));
+
+            // Solo Buttons
+            soloSubmitBtn.addEventListener('click', handleSoloSubmit);
+            soloAnswerInput.addEventListener('keypress', (e) => { if (e.key === 'Enter' && !soloSubmitBtn.disabled) handleSoloSubmit(); });
+            soloNextBtn.addEventListener('click', nextSoloQuestion);
+            soloResultsBtn.addEventListener('click', finishSoloSession);
+            soloQuitBtn.addEventListener('click', quitSoloSession);
+
+            // Multiplayer Game Buttons
+            player1SubmitBtn.addEventListener('click', () => handleMultiSubmit('player1'));
+            player1AnswerInput.addEventListener('keypress', (e) => { if (e.key === 'Enter' && !player1SubmitBtn.disabled) handleMultiSubmit('player1'); });
+            player2SubmitBtn.addEventListener('click', () => handleMultiSubmit('player2'));
+            player2AnswerInput.addEventListener('keypress', (e) => { if (e.key === 'Enter' && !player2SubmitBtn.disabled) handleMultiSubmit('player2'); });
+            multiQuitBtn.addEventListener('click', quitMultiGame);
+
+            // Multiplayer Results Buttons
+            playAgainSetupBtn.addEventListener('click', () => showSection('multi-setup-section'));
+
+            // Stats Button
+            clearStatsBtn.addEventListener('click', clearStats);
+        });
+
+    </script>
+
+</body>
+</html>
