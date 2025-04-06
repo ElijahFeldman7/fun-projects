@@ -1,0 +1,799 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Flashcard Flip</title>
+    <style>
+        /* --- Basic Styling & Variables --- */
+        :root {
+            --primary-color: #4257b2; /* Quizlet-like Blue */
+            --secondary-color: #f6f7fb;
+            --text-color: #303545;
+            --bg-color: #ffffff;
+            --border-color: #e4e7f3;
+            --hover-bg: #f0f1f7;
+            --success-color: #00a96d;
+            --error-color: #ff725b;
+            --card-bg: #ffffff;
+            --input-border: #d9dde8;
+            --font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: var(--font-family); background-color: var(--secondary-color); color: var(--text-color); line-height: 1.6; font-size: 16px; }
+        .container { width: 95%; max-width: 900px; margin: 20px auto; background-color: var(--bg-color); padding: 20px 30px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.08); }
+        header { background-color: var(--primary-color); color: white; padding: 15px 0; margin-bottom: 25px; }
+        nav { width: 95%; max-width: 900px; margin: 0 auto; display: flex; justify-content: space-between; align-items: center; }
+        .logo { font-size: 1.7em; font-weight: bold; }
+        nav button, .back-button { background-color: white; color: var(--primary-color); border: 1px solid var(--primary-color); padding: 8px 15px; border-radius: 4px; cursor: pointer; font-size: 0.95em; font-weight: 500; transition: background-color 0.2s ease, color 0.2s ease; }
+        nav button:hover, .back-button:hover { background-color: rgba(255, 255, 255, 0.9); }
+        .back-button { margin-bottom: 15px; display: inline-block; } /* For views other than library */
+
+        /* Section Styling */
+        .content-section { display: none; padding-top: 10px; animation: fadeIn 0.4s ease; }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        .content-section.active { display: block; }
+        h1, h2 { margin-bottom: 20px; color: var(--text-color); font-weight: 600; }
+        h1 { text-align: center; font-size: 1.8em; margin-bottom: 30px; }
+        h2 { font-size: 1.5em; padding-bottom: 10px; border-bottom: 1px solid var(--border-color); }
+        h3 { font-size: 1.2em; margin-bottom: 15px; color: #555; }
+
+        /* Buttons & Inputs */
+        button { background-color: var(--primary-color); color: white; border: none; padding: 10px 18px; border-radius: 4px; cursor: pointer; font-size: 1em; transition: background-color 0.2s ease; font-weight: 500; margin: 5px; }
+        button:hover:not(:disabled) { background-color: #35469b; }
+        button:disabled { background-color: #ccc; cursor: not-allowed; opacity: 0.7; }
+        button.secondary { background-color: #767d9b; }
+        button.secondary:hover:not(:disabled) { background-color: #5e647e; }
+        button.danger { background-color: var(--error-color); }
+        button.danger:hover:not(:disabled) { background-color: #e8543e; }
+        input[type="text"], textarea { padding: 10px 12px; border: 1px solid var(--input-border); border-radius: 4px; font-size: 1em; margin-bottom: 10px; width: 100%; font-family: inherit; transition: border-color 0.2s ease, box-shadow 0.2s ease; }
+        input:focus, textarea:focus { border-color: var(--primary-color); box-shadow: 0 0 0 2px rgba(66, 87, 178, 0.2); outline: none; }
+        textarea { min-height: 60px; resize: vertical; line-height: 1.5; }
+        label { font-weight: 500; margin-bottom: 5px; display: block; font-size: 0.9em; color: #555;}
+
+        /* Library View */
+        #library-view ul { list-style: none; padding: 0; }
+        #library-view li { background-color: #fff; border: 1px solid var(--border-color); padding: 15px 20px; margin-bottom: 12px; border-radius: 6px; display: flex; justify-content: space-between; align-items: center; transition: background-color 0.2s ease; }
+        #library-view li:hover { background-color: var(--hover-bg); }
+        #library-view .deck-info { flex-grow: 1; margin-right: 15px;}
+        #library-view .deck-title { font-weight: 600; font-size: 1.15em; margin-bottom: 3px; color: var(--primary-color); cursor: pointer; }
+        #library-view .deck-title:hover { text-decoration: underline;}
+        #library-view .deck-desc { font-size: 0.9em; color: #666; margin-bottom: 5px;}
+        #library-view .deck-count { font-size: 0.85em; color: #888; }
+        #library-view .deck-actions button { padding: 5px 10px; font-size: 0.9em; margin-left: 5px;}
+
+        /* Create/Edit View */
+        #create-edit-view .form-actions { text-align: right; margin-top: 20px; padding-top: 15px; border-top: 1px solid var(--border-color); }
+        .card-inputs { border: 1px solid var(--border-color); border-radius: 6px; padding: 15px; margin-bottom: 15px; background-color: #fcfcff;}
+        .card-input-row { display: flex; gap: 15px; align-items: flex-start; margin-bottom: 10px; }
+        .card-input-row > div { flex: 1; } /* Term and definition take equal space */
+        .card-input-row label { font-size: 0.85em; margin-bottom: 3px; color: #666;}
+        .card-input-row button.remove-card-btn { background: none; border: none; color: var(--error-color); font-size: 1.5em; cursor: pointer; padding: 0 5px; margin-top: 25px; flex-shrink: 0; opacity: 0.7; }
+        .card-input-row button.remove-card-btn:hover { opacity: 1; }
+        #add-card-btn { display: block; margin: 15px auto; font-size: 0.95em; background-color: var(--success-color);}
+         #add-card-btn:hover { background-color: #008a59;}
+
+        /* Study View General */
+        #study-view h2 { margin-bottom: 10px; }
+        .study-controls { text-align: center; margin-bottom: 25px; padding-bottom: 15px; border-bottom: 1px solid var(--border-color);}
+        .study-controls button { opacity: 0.7; background-color: #e4e7f3; color: var(--text-color); border: 1px solid #c8cde0;}
+        .study-controls button.active { opacity: 1; background-color: var(--primary-color); color: white; border-color: var(--primary-color);}
+        .study-progress { text-align: center; font-size: 0.9em; color: #777; margin: 15px 0; }
+        .study-nav { display: flex; justify-content: space-between; margin-top: 20px; }
+
+        /* Flashcard Mode */
+        .flashcard-container { perspective: 1000px; margin: 20px auto; width: 90%; max-width: 500px; height: 250px; cursor: pointer; }
+        .flashcard { width: 100%; height: 100%; position: relative; transform-style: preserve-3d; transition: transform 0.6s; background-color: var(--card-bg); border: 1px solid var(--border-color); border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+        .flashcard.is-flipped { transform: rotateY(180deg); }
+        .flashcard-face { position: absolute; width: 100%; height: 100%; backface-visibility: hidden; display: flex; align-items: center; justify-content: center; padding: 20px; text-align: center; font-size: 1.4em; overflow-y: auto;}
+        .flashcard-front { }
+        .flashcard-back { transform: rotateY(180deg); }
+
+        /* Learn Mode */
+        #learn-prompt { font-size: 1.2em; margin-bottom: 15px; color: #444; background-color: #f9f9f9; padding: 15px; border-radius: 6px; border-left: 4px solid var(--primary-color); }
+        #learn-input-area { text-align: center; }
+        #learn-answer-input { max-width: 400px; margin: 0 auto 15px auto; text-align: center; font-size: 1.1em; display: block;}
+        #learn-feedback { font-weight: bold; min-height: 1.5em; margin-top: 15px; padding: 8px; border-radius: 4px;}
+        #learn-feedback.correct { color: var(--success-color); background-color: #e6f6f0;}
+        #learn-feedback.incorrect { color: var(--error-color); background-color: #fff0ed;}
+
+        /* Test Mode */
+        #test-term { font-size: 1.3em; margin-bottom: 20px; text-align: center; font-weight: 600;}
+        .mcq-options { display: flex; flex-direction: column; gap: 10px; }
+        .mcq-options button {
+            background-color: #fff; color: var(--text-color); border: 1px solid var(--input-border);
+            text-align: left; padding: 12px 15px; width: 100%; margin: 0;
+            transition: background-color 0.2s ease, border-color 0.2s ease;
+        }
+        .mcq-options button:hover:not(:disabled) { background-color: var(--hover-bg); border-color: #a8b0c3;}
+        .mcq-options button.correct { background-color: #e6f6f0; border-color: var(--success-color); color: var(--success-color); font-weight: bold; }
+        .mcq-options button.incorrect { background-color: #fff0ed; border-color: var(--error-color); color: var(--error-color); text-decoration: line-through; }
+        #test-results { margin-top: 30px; text-align: center; font-size: 1.2em;}
+        #test-results p { margin-bottom: 10px; }
+        #test-score { font-weight: bold; font-size: 1.4em; color: var(--primary-color);}
+
+        /* Footer */
+        footer { text-align: center; padding: 20px; margin-top: 30px; font-size: 0.9em; color: #888; border-top: 1px solid var(--border-color); }
+
+        /* Responsive */
+        @media (max-width: 600px) {
+            .container { padding: 15px; width: 100%; margin: 10px 0; border-radius: 0;}
+            nav { flex-direction: column; gap: 10px;}
+            h1 { font-size: 1.6em; }
+            .card-input-row { flex-direction: column; gap: 5px; align-items: stretch;}
+            .card-input-row button.remove-card-btn { margin-top: 5px; text-align: right;}
+            .flashcard-container { height: 200px; }
+            .flashcard-face { font-size: 1.2em; }
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <nav>
+            <div class="logo">Flashcard Flip</div>
+            <button id="create-deck-nav-btn">Create Deck</button>
+        </nav>
+    </header>
+
+    <div class="container">
+
+        <!-- Library View (Default) -->
+        <section id="library-view" class="content-section active">
+            <h1>Your Flashcard Decks</h1>
+            <ul id="deck-list">
+                <!-- Deck list items will be added here -->
+            </ul>
+            <p id="no-decks-message" style="text-align:center; color:#888; margin-top: 20px; display: none;">You haven't created any decks yet. Click "Create Deck" to start!</p>
+        </section>
+
+        <!-- Create / Edit View -->
+        <section id="create-edit-view" class="content-section">
+            <button class="back-button" data-target="library-view">← Back to Library</button>
+            <h1 id="create-edit-title">Create New Deck</h1>
+            <input type="hidden" id="edit-deck-id"> <!-- Store ID when editing -->
+            <div class="form-group">
+                <label for="deck-title">Title</label>
+                <input type="text" id="deck-title" placeholder="Enter deck title (e.g., Biology Chapter 5)">
+            </div>
+            <div class="form-group">
+                <label for="deck-description">Description (Optional)</label>
+                <input type="text" id="deck-description" placeholder="Add a short description">
+            </div>
+
+            <h2>Cards</h2>
+            <div id="cards-container">
+                <!-- Card input rows will be added here -->
+            </div>
+            <button id="add-card-btn">+ Add Card</button>
+
+            <div class="form-actions">
+                <button id="cancel-deck-btn" class="secondary" data-target="library-view">Cancel</button>
+                <button id="save-deck-btn">Save Deck</button>
+            </div>
+        </section>
+
+        <!-- Study View -->
+        <section id="study-view" class="content-section">
+             <button class="back-button" data-target="library-view">← Back to Library</button>
+            <h2 id="study-deck-title">Studying Deck</h2>
+            <div class="study-controls">
+                <button data-mode="flashcards" class="study-mode-btn active">Flashcards</button>
+                <button data-mode="learn" class="study-mode-btn">Learn</button>
+                <button data-mode="test" class="study-mode-btn">Test</button>
+            </div>
+
+            <div id="study-content">
+                <!-- Study mode content loads here -->
+            </div>
+
+            <p class="study-progress" id="study-progress"></p>
+
+        </section>
+    </div>
+
+    <footer>
+        Flashcard Flip - JS Only Version
+    </footer>
+
+    <script>
+        // --- DOM Elements ---
+        const sections = document.querySelectorAll('.content-section');
+        const libraryView = document.getElementById('library-view');
+        const createEditView = document.getElementById('create-edit-view');
+        const studyView = document.getElementById('study-view');
+        const createDeckNavBtn = document.getElementById('create-deck-nav-btn');
+        const deckListUl = document.getElementById('deck-list');
+        const noDecksMessage = document.getElementById('no-decks-message');
+        const backButtons = document.querySelectorAll('.back-button');
+
+        // Create/Edit View Elements
+        const createEditTitle = document.getElementById('create-edit-title');
+        const editDeckIdInput = document.getElementById('edit-deck-id');
+        const deckTitleInput = document.getElementById('deck-title');
+        const deckDescriptionInput = document.getElementById('deck-description');
+        const cardsContainer = document.getElementById('cards-container');
+        const addCardBtn = document.getElementById('add-card-btn');
+        const saveDeckBtn = document.getElementById('save-deck-btn');
+        const cancelDeckBtn = document.getElementById('cancel-deck-btn');
+
+        // Study View Elements
+        const studyDeckTitle = document.getElementById('study-deck-title');
+        const studyModeBtns = document.querySelectorAll('.study-mode-btn');
+        const studyContent = document.getElementById('study-content');
+        const studyProgress = document.getElementById('study-progress');
+
+
+        // --- State ---
+        let decks = []; // Array of { id, title, description, cards: [{id, term, definition}] }
+        let currentView = 'library-view';
+        let currentDeck = null; // The deck object being studied/edited
+        let currentCardIndex = 0;
+        let currentStudyMode = 'flashcards';
+        let testState = { active: false, questions: [], currentIndex: -1, score: 0 }; // For test mode
+
+        // --- Constants ---
+        const DECKS_STORAGE_KEY = 'flashcardAppDecks_v1';
+
+
+        // --- Utility Functions ---
+        function showSection(sectionId) {
+            currentView = sectionId;
+            sections.forEach(section => {
+                section.classList.toggle('active', section.id === sectionId);
+            });
+            window.scrollTo(0, 0);
+        }
+
+        function generateId() {
+            return Date.now() + Math.random().toString(36).substring(2, 7);
+        }
+
+        // Fisher-Yates Shuffle
+        function shuffleArray(array) {
+            for (let i = array.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [array[i], array[j]] = [array[j], array[i]];
+            }
+            return array;
+        }
+
+        // --- Data Persistence ---
+        function loadDecks() {
+            const storedDecks = localStorage.getItem(DECKS_STORAGE_KEY);
+            decks = storedDecks ? JSON.parse(storedDecks) : [];
+            // Basic validation
+            if (!Array.isArray(decks)) decks = [];
+             decks.forEach(deck => {
+                 if (!Array.isArray(deck.cards)) deck.cards = [];
+                 deck.cards.forEach(card => {
+                     if (!card.id) card.id = generateId(); // Add missing IDs if loading old data
+                 });
+                 if (!deck.id) deck.id = generateId();
+             });
+            console.log("Decks loaded:", decks.length);
+        }
+
+        function saveDecks() {
+            localStorage.setItem(DECKS_STORAGE_KEY, JSON.stringify(decks));
+            console.log("Decks saved");
+        }
+
+        // --- Deck Management ---
+        function renderLibrary() {
+            deckListUl.innerHTML = ''; // Clear list
+            if (decks.length === 0) {
+                noDecksMessage.style.display = 'block';
+                return;
+            }
+            noDecksMessage.style.display = 'none';
+
+            // Sort decks alphabetically by title for display
+            [...decks].sort((a, b) => a.title.localeCompare(b.title)).forEach(deck => {
+                const li = document.createElement('li');
+                li.innerHTML = `
+                    <div class="deck-info">
+                        <div class="deck-title" data-deck-id="${deck.id}">${deck.title}</div>
+                        <div class="deck-desc">${deck.description || ''}</div>
+                        <div class="deck-count">${deck.cards.length} card${deck.cards.length !== 1 ? 's' : ''}</div>
+                    </div>
+                    <div class="deck-actions">
+                        <button class="edit-deck-btn" data-deck-id="${deck.id}">Edit</button>
+                        <button class="study-deck-btn" data-deck-id="${deck.id}">Study</button>
+                        <button class="delete-deck-btn danger" data-deck-id="${deck.id}">Delete</button>
+                    </div>
+                `;
+                deckListUl.appendChild(li);
+            });
+        }
+
+        function showCreateEditView(deckId = null) {
+            // Reset form
+            editDeckIdInput.value = '';
+            deckTitleInput.value = '';
+            deckDescriptionInput.value = '';
+            cardsContainer.innerHTML = ''; // Clear previous card inputs
+
+            if (deckId) {
+                // Editing existing deck
+                currentDeck = decks.find(d => d.id === deckId);
+                if (!currentDeck) {
+                    console.error("Deck not found for editing:", deckId);
+                    showSection('library-view'); // Go back if deck invalid
+                    return;
+                }
+                createEditTitle.textContent = 'Edit Deck';
+                editDeckIdInput.value = currentDeck.id;
+                deckTitleInput.value = currentDeck.title;
+                deckDescriptionInput.value = currentDeck.description || '';
+                // Populate card inputs
+                currentDeck.cards.forEach(card => addCardRow(card.id, card.term, card.definition));
+                 if (currentDeck.cards.length === 0) {
+                     addCardRow(); // Add one empty row if editing an empty deck
+                 }
+            } else {
+                // Creating new deck
+                currentDeck = null;
+                createEditTitle.textContent = 'Create New Deck';
+                addCardRow(); // Add one empty row to start
+                addCardRow(); // Add a second empty row
+            }
+            showSection('create-edit-view');
+        }
+
+        function addCardRow(cardId = '', term = '', definition = '') {
+            const cardDiv = document.createElement('div');
+            cardDiv.className = 'card-inputs';
+            // Use data-card-id to potentially link back if needed, though saving iterates inputs
+             cardDiv.dataset.cardId = cardId || generateId(); // Generate ID if new
+
+            cardDiv.innerHTML = `
+                <div class="card-input-row">
+                    <div>
+                        <label>Term</label>
+                        <textarea rows="2" placeholder="Enter term">${term}</textarea>
+                    </div>
+                    <div>
+                        <label>Definition</label>
+                        <textarea rows="2" placeholder="Enter definition">${definition}</textarea>
+                    </div>
+                    <button type="button" class="remove-card-btn" title="Remove card">×</button>
+                </div>
+            `;
+            cardsContainer.appendChild(cardDiv);
+
+            // Add event listener to the new remove button
+            cardDiv.querySelector('.remove-card-btn').addEventListener('click', (e) => {
+                 // Prevent removing the last card row
+                 if (cardsContainer.children.length > 1) {
+                    e.target.closest('.card-inputs').remove();
+                 } else {
+                     alert("You need at least one card in a deck!");
+                 }
+            });
+        }
+
+        function handleSaveDeck() {
+            const deckId = editDeckIdInput.value;
+            const title = deckTitleInput.value.trim();
+            const description = deckDescriptionInput.value.trim();
+            const cardInputDivs = cardsContainer.querySelectorAll('.card-inputs');
+            const cards = [];
+
+            if (!title) {
+                alert('Please enter a deck title.');
+                deckTitleInput.focus();
+                return;
+            }
+
+            cardInputDivs.forEach(cardDiv => {
+                const termInput = cardDiv.querySelector('textarea:first-of-type');
+                const defInput = cardDiv.querySelector('textarea:last-of-type');
+                const term = termInput.value.trim();
+                const definition = defInput.value.trim();
+                 const cardId = cardDiv.dataset.cardId; // Get existing or generated ID
+
+                // Only add card if both term and definition are filled
+                if (term && definition) {
+                    cards.push({ id: cardId, term: term, definition: definition });
+                } else if (term || definition) {
+                    // If only one is filled, maybe warn or just ignore? Ignoring for now.
+                    console.warn("Ignoring card row with missing term or definition.");
+                }
+            });
+
+            if (cards.length === 0) {
+                alert('Please add at least one card with both a term and definition.');
+                return;
+            }
+
+            if (deckId) {
+                // Update existing deck
+                const deckIndex = decks.findIndex(d => d.id == deckId); // Use == for potential type difference
+                if (deckIndex > -1) {
+                    decks[deckIndex].title = title;
+                    decks[deckIndex].description = description;
+                    decks[deckIndex].cards = cards;
+                } else {
+                     console.error("Failed to find deck to update:", deckId);
+                     // Optionally create a new one as fallback?
+                     alert("Error saving deck. Could not find original.");
+                     return;
+                }
+            } else {
+                // Create new deck
+                const newDeck = {
+                    id: generateId(),
+                    title: title,
+                    description: description,
+                    cards: cards
+                };
+                decks.push(newDeck);
+            }
+
+            saveDecks();
+            renderLibrary();
+            showSection('library-view');
+        }
+
+        function deleteDeck(deckId) {
+             const deck = decks.find(d => d.id === deckId);
+             if (!deck) return;
+
+             if (confirm(`Are you sure you want to delete the deck "${deck.title}"? This cannot be undone.`)) {
+                 decks = decks.filter(d => d.id !== deckId);
+                 saveDecks();
+                 renderLibrary(); // Re-render the library view
+                 // If currently viewing/editing this deck, go back to library
+                 if (currentView !== 'library-view' && currentDeck?.id === deckId) {
+                     showSection('library-view');
+                 }
+             }
+        }
+
+
+        // --- Study Mode Logic ---
+        function showStudyView(deckId) {
+            currentDeck = decks.find(d => d.id === deckId);
+            if (!currentDeck || currentDeck.cards.length === 0) {
+                alert("Cannot study this deck: It was not found or has no cards.");
+                showSection('library-view');
+                return;
+            }
+
+            studyDeckTitle.textContent = `Studying: ${currentDeck.title}`;
+            currentCardIndex = 0; // Start from the first card
+            testState.active = false; // Ensure test mode is reset
+            setStudyMode('flashcards'); // Default to flashcards
+            showSection('study-view');
+        }
+
+         function setStudyMode(mode) {
+             currentStudyMode = mode;
+             studyModeBtns.forEach(btn => {
+                 btn.classList.toggle('active', btn.dataset.mode === mode);
+             });
+
+             // Reset index/state when switching modes
+             currentCardIndex = 0;
+              testState.active = false; // Deactivate test mode if switching away
+
+             // Render the specific mode's UI
+             if (mode === 'flashcards') {
+                 renderFlashcardMode();
+             } else if (mode === 'learn') {
+                 renderLearnMode();
+             } else if (mode === 'test') {
+                  // Don't start test immediately, show setup/start button? Or just start? Let's start.
+                 startTestMode();
+             }
+              updateStudyProgress();
+         }
+
+         function updateStudyProgress() {
+             if (!currentDeck) return;
+             const total = currentDeck.cards.length;
+             if (currentStudyMode === 'test' && testState.active) {
+                 studyProgress.textContent = `Question ${testState.currentIndex + 1} / ${testState.questions.length}`;
+             } else if (currentStudyMode !== 'test') {
+                  studyProgress.textContent = `Card ${currentCardIndex + 1} / ${total}`;
+             } else {
+                 studyProgress.textContent = ''; // Hide if test not started
+             }
+         }
+
+        // --- Flashcard Mode ---
+        function renderFlashcardMode() {
+             if (!currentDeck || currentCardIndex >= currentDeck.cards.length) {
+                 studyContent.innerHTML = '<p>No card to display.</p>';
+                 return;
+             }
+             const card = currentDeck.cards[currentCardIndex];
+             studyContent.innerHTML = `
+                <div class="flashcard-container" id="flashcard-container">
+                    <div class="flashcard" id="flashcard">
+                        <div class="flashcard-face flashcard-front">${card.term}</div>
+                        <div class="flashcard-face flashcard-back">${card.definition}</div>
+                    </div>
+                </div>
+                <div class="study-nav">
+                    <button id="prev-card-btn" ${currentCardIndex === 0 ? 'disabled' : ''}>← Previous</button>
+                    <button id="next-card-btn" ${currentCardIndex === currentDeck.cards.length - 1 ? 'disabled' : ''}>Next →</button>
+                </div>
+             `;
+
+            // Add event listeners
+            document.getElementById('flashcard-container').addEventListener('click', flipCard);
+             if(currentCardIndex > 0) document.getElementById('prev-card-btn').addEventListener('click', prevCard);
+             if(currentCardIndex < currentDeck.cards.length - 1) document.getElementById('next-card-btn').addEventListener('click', nextCard);
+             updateStudyProgress();
+        }
+
+        function flipCard() {
+            document.getElementById('flashcard')?.classList.toggle('is-flipped');
+        }
+
+        function nextCard() {
+            if (currentCardIndex < currentDeck.cards.length - 1) {
+                currentCardIndex++;
+                renderFlashcardMode(); // Could optimize to just update content
+            }
+        }
+        function prevCard() {
+            if (currentCardIndex > 0) {
+                currentCardIndex--;
+                renderFlashcardMode(); // Could optimize
+            }
+        }
+
+        // --- Learn Mode ---
+        function renderLearnMode() {
+            if (!currentDeck || currentCardIndex >= currentDeck.cards.length) {
+                 studyContent.innerHTML = '<p>Session Complete! <button onclick="setStudyMode(\'flashcards\')">Restart?</button></p>'; // Or back to library
+                 studyProgress.textContent = "Done!";
+                 return;
+             }
+             const card = currentDeck.cards[currentCardIndex];
+             // Display Definition, ask for Term
+             studyContent.innerHTML = `
+                <div id="learn-prompt">Definition: ${card.definition}</div>
+                <div id="learn-input-area">
+                    <label for="learn-answer-input">Type the matching Term:</label>
+                    <input type="text" id="learn-answer-input" autocomplete="off">
+                    <button id="check-learn-btn">Check Answer</button>
+                </div>
+                <div id="learn-feedback"></div>
+                <div class="study-nav">
+                     <button id="learn-override-btn" class="secondary" style="display: none;">Override: I was right</button>
+                     <button id="learn-next-btn" style="display: none;">Next →</button>
+                 </div>
+             `;
+             updateStudyProgress();
+             document.getElementById('check-learn-btn').addEventListener('click', checkLearnAnswer);
+              document.getElementById('learn-answer-input').addEventListener('keypress', (e) => {
+                  if (e.key === 'Enter') checkLearnAnswer();
+              });
+             document.getElementById('learn-next-btn').addEventListener('click', nextLearnCard);
+             document.getElementById('learn-override-btn').addEventListener('click', overrideLearnIncorrect);
+            document.getElementById('learn-answer-input').focus();
+        }
+
+        function checkLearnAnswer() {
+            const userAnswer = document.getElementById('learn-answer-input').value.trim();
+            const correctAnswer = currentDeck.cards[currentCardIndex].term.trim();
+            const feedbackEl = document.getElementById('learn-feedback');
+            const checkBtn = document.getElementById('check-learn-btn');
+            const nextBtn = document.getElementById('learn-next-btn');
+             const overrideBtn = document.getElementById('learn-override-btn');
+
+
+            if (!userAnswer) {
+                feedbackEl.textContent = "Please type an answer.";
+                feedbackEl.className = 'feedback';
+                return;
+            }
+
+            checkBtn.disabled = true; // Prevent multiple checks
+            document.getElementById('learn-answer-input').disabled = true;
+             overrideBtn.style.display = 'none'; // Hide override initially
+
+            // Simple case-insensitive check
+            if (userAnswer.toLowerCase() === correctAnswer.toLowerCase()) {
+                feedbackEl.textContent = "Correct!";
+                feedbackEl.className = 'feedback correct';
+                nextBtn.style.display = 'inline-block';
+                 nextBtn.focus();
+            } else {
+                feedbackEl.textContent = `Incorrect. The correct answer is: ${correctAnswer}`;
+                feedbackEl.className = 'feedback incorrect';
+                 overrideBtn.style.display = 'inline-block'; // Show override button
+                 nextBtn.style.display = 'inline-block'; // Also allow moving on
+                 overrideBtn.focus();
+            }
+        }
+
+        function nextLearnCard() {
+             currentCardIndex++;
+             renderLearnMode();
+         }
+
+         function overrideLearnIncorrect() {
+             // If user clicks override, maybe mark as correct for session stats (not implemented here)
+             // For now, just lets them proceed as if correct visually in this simple version
+             const feedbackEl = document.getElementById('learn-feedback');
+             feedbackEl.textContent = "Marked as correct (Override).";
+             feedbackEl.className = 'feedback correct';
+             document.getElementById('learn-override-btn').style.display = 'none';
+             document.getElementById('learn-next-btn').focus();
+         }
+
+
+        // --- Test Mode (Multiple Choice) ---
+        function startTestMode() {
+             if (!currentDeck || currentDeck.cards.length < 4) { // Need at least 4 cards for 3 distractors + 1 correct
+                 studyContent.innerHTML = '<p>Not enough cards in this deck (need at least 4) to generate a multiple-choice test.</p>';
+                 studyProgress.textContent = '';
+                 return;
+             }
+
+            testState.active = true;
+            testState.questions = [];
+            testState.currentIndex = 0;
+            testState.score = 0;
+
+            const allCards = shuffleArray([...currentDeck.cards]); // Shuffle a copy
+
+            allCards.forEach(card => {
+                const questionData = {
+                    cardId: card.id,
+                    term: card.term,
+                    correctDefinition: card.definition,
+                    options: []
+                };
+
+                // Get distractors (definitions from other cards)
+                const distractors = allCards
+                    .filter(c => c.id !== card.id) // Exclude the current card
+                    .map(c => c.definition) // Get their definitions
+                    .slice(0, 3); // Take up to 3
+
+                // Combine correct answer + distractors and shuffle
+                questionData.options = shuffleArray([questionData.correctDefinition, ...distractors]);
+                testState.questions.push(questionData);
+            });
+
+            renderTestMode(); // Render the first question
+        }
+
+         function renderTestMode() {
+             if (!testState.active || testState.currentIndex >= testState.questions.length) {
+                 finishTestMode();
+                 return;
+             }
+
+             const currentQ = testState.questions[testState.currentIndex];
+             let optionsHTML = '';
+             currentQ.options.forEach((option, index) => {
+                 // Escape HTML in options to prevent rendering issues
+                 const escapedOption = option.replace(/</g, "<").replace(/>/g, ">");
+                 optionsHTML += `<button class="mcq-option" data-index="${index}">${escapedOption}</button>`;
+             });
+
+             studyContent.innerHTML = `
+                <div id="test-term">Term: ${currentQ.term}</div>
+                <div class="mcq-options">
+                    ${optionsHTML}
+                </div>
+                 <div class="study-nav" style="justify-content: center;">
+                     <button id="test-next-btn" style="display: none;">Next Question →</button>
+                 </div>
+             `;
+
+             // Add listeners to options
+             studyContent.querySelectorAll('.mcq-option').forEach(button => {
+                 button.addEventListener('click', handleTestAnswer);
+             });
+             updateStudyProgress();
+         }
+
+         function handleTestAnswer(event) {
+             const selectedButton = event.target;
+             const selectedIndex = parseInt(selectedButton.dataset.index);
+             const currentQ = testState.questions[testState.currentIndex];
+             const selectedDefinition = currentQ.options[selectedIndex];
+             const correctDefinition = currentQ.correctDefinition;
+
+             // Disable all buttons
+             studyContent.querySelectorAll('.mcq-option').forEach(btn => btn.disabled = true);
+
+             let isCorrect = (selectedDefinition === correctDefinition);
+
+             if (isCorrect) {
+                 testState.score++;
+                 selectedButton.classList.add('correct');
+             } else {
+                 selectedButton.classList.add('incorrect');
+                 // Highlight the correct one
+                 studyContent.querySelectorAll('.mcq-option').forEach((btn, index) => {
+                     if (currentQ.options[index] === correctDefinition) {
+                         btn.classList.add('correct');
+                     }
+                 });
+             }
+
+             // Show Next button
+             document.getElementById('test-next-btn').style.display = 'inline-block';
+             document.getElementById('test-next-btn').addEventListener('click', nextTestQuestion);
+             document.getElementById('test-next-btn').focus();
+         }
+
+         function nextTestQuestion() {
+             testState.currentIndex++;
+             renderTestMode();
+         }
+
+         function finishTestMode() {
+             testState.active = false;
+             const total = testState.questions.length;
+             const percentage = total > 0 ? ((testState.score / total) * 100).toFixed(1) : 0;
+             studyContent.innerHTML = `
+                <div id="test-results">
+                    <h2>Test Complete!</h2>
+                    <p>Your Score:</p>
+                    <p id="test-score">${testState.score} / ${total} (${percentage}%)</p>
+                     <button onclick="setStudyMode('flashcards')">Study Again</button>
+                     <button onclick="showSection('library-view')">Back to Library</button>
+                </div>
+             `;
+             studyProgress.textContent = "Test Finished";
+         }
+
+
+        // --- Event Listeners ---
+        document.addEventListener('DOMContentLoaded', () => {
+            loadDecks();
+            renderLibrary();
+            showSection('library-view'); // Start at library
+
+            // Global Navigation/Actions
+            createDeckNavBtn.addEventListener('click', () => showCreateEditView());
+            backButtons.forEach(btn => {
+                 btn.addEventListener('click', () => {
+                     // Add confirmation if leaving study/edit?
+                     showSection(btn.dataset.target || 'library-view');
+                 });
+            });
+             cancelDeckBtn.addEventListener('click', () => showSection('library-view')); // Explicit cancel
+
+
+            // Library View Actions (Event Delegation)
+            deckListUl.addEventListener('click', (e) => {
+                const target = e.target;
+                const deckId = target.dataset.deckId || target.closest('[data-deck-id]')?.dataset.deckId;
+
+                if (!deckId) return; // Click wasn't on a relevant element
+
+                if (target.classList.contains('edit-deck-btn')) {
+                    showCreateEditView(deckId);
+                } else if (target.classList.contains('study-deck-btn') || target.classList.contains('deck-title')) {
+                    showStudyView(deckId);
+                } else if (target.classList.contains('delete-deck-btn')) {
+                    deleteDeck(deckId);
+                }
+            });
+
+            // Create/Edit View Actions
+            addCardBtn.addEventListener('click', () => addCardRow());
+            saveDeckBtn.addEventListener('click', handleSaveDeck);
+
+             // Study View Mode Switching
+             studyModeBtns.forEach(btn => {
+                 btn.addEventListener('click', () => setStudyMode(btn.dataset.mode));
+             });
+
+        });
+
+    </script>
+
+</body>
+</html>
